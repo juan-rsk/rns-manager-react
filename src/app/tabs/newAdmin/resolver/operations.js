@@ -1,5 +1,6 @@
 import Web3 from 'web3';
 import RNS from '@rsksmart/rns';
+import { encodeContenthash, decodeContenthash } from '@ensdomains/ui'
 import { hash as namehash } from 'eth-ens-namehash';
 import { validateBytes32 } from '../../../validations';
 
@@ -72,7 +73,6 @@ export const getDomainResolver = domain => async (dispatch) => {
     });
 };
 
-
 /**
  * Get the content Bytes or contenthash from the given resolver
  * @param {address} resolverAddress to be queried
@@ -93,12 +93,16 @@ export const getContentBytes = (resolverAddress, domain, type = CONTENT_BYTES) =
     : resolver.methods.contenthash(hash);
 
   method.call()
-    .then(value => dispatch(
-      receiveContent(
-        type,
-        (value === CONTENT_BYTES_BLANK || !value) ? '' : value,
-      ),
-    ))
+    .then(value => {
+      let { protocolType, decoded, error } = decodeContenthash(value)
+      const displayValue = error ? value : `${protocolType}://${decoded}`
+      dispatch(
+        receiveContent(
+          type,
+          (value === CONTENT_BYTES_BLANK || !value) ? '' : displayValue,
+        ),
+      );
+    })
     .catch(error => dispatch(errorContent(type, error)));
 };
 
@@ -172,6 +176,32 @@ export const setDomainResolver = (domain, resolverAddress) => async (dispatch) =
     });
 };
 
+const setContenthash = (
+  resolverAddress, domain, input, type,
+) => dispatch => {
+  if (input === '')
+    dispatch(_setContent(resolverAddress, domain, input, type))
+
+  const encoded = encodeContenthash(input)
+
+  if (encoded === input)
+    return dispatch(errorSetContent(type, 'Invalid CID'))
+
+  dispatch(_setContent(resolverAddress, domain, encoded, type));
+}
+
+const setContentBytes = (
+  resolverAddress, domain, input, type,
+) => dispatch => {
+  const value = input !== '' ? input : CONTENT_BYTES_BLANK;
+
+  if (validateBytes32(value)) {
+    return dispatch(errorSetContent(type, validateBytes32(value)));
+  }
+
+  dispatch(_setContent(resolverAddress, domain, value, type));
+}
+
 /**
  * Sets the ContentBytes OR ContentHash for the domain
  * @param {address} resolverAddress address of the Resolver used
@@ -179,45 +209,39 @@ export const setDomainResolver = (domain, resolverAddress) => async (dispatch) =
  * @param {bytes32} input to be set, or empty to set blank
  * @param {const} type either CONTENT_BYTES or CONTENT_HASH
  */
-const setContentBytes = (
-  resolverAddress, domain, input, type = CONTENT_BYTES,
-) => async (dispatch) => {
+const _setContent = (
+  resolverAddress, domain, value, type = CONTENT_BYTES,
+) => (dispatch) => {
   dispatch(requestSetContent(type));
-
-  const value = input !== '' ? input : CONTENT_BYTES_BLANK;
-
-  // validation
-  if (validateBytes32(value)) {
-    return dispatch(errorSetContent(type, validateBytes32(value)));
-  }
 
   const resolver = new web3.eth.Contract(
     resolverAbi, resolverAddress, { gasPrice: defaultGasPrice },
   );
 
-  const accounts = await window.ethereum.enable();
-  const currentAddress = accounts[0];
+  window.ethereum.enable().then((accounts) => {
+    const currentAddress = accounts[0];
 
-  const method = type === CONTENT_BYTES
-    ? resolver.methods.setContent(namehash(domain), value)
-    : resolver.methods.setContenthash(namehash(domain), value);
+    const method = type === CONTENT_BYTES
+      ? resolver.methods.setContent(namehash(domain), value)
+      : resolver.methods.setContenthash(namehash(domain), value);
 
-  return method.send(
-    { from: currentAddress }, (error, result) => {
-      if (error) {
-        return dispatch(errorSetContent(type, error.message));
-      }
+    return method.send(
+      { from: currentAddress }, (error, result) => {
+        if (error) {
+          return dispatch(errorSetContent(type, error.message));
+        }
 
-      const transactionConfirmed = () => () => {
-        dispatch(receiveSetContent(
-          type, result, (value === CONTENT_BYTES_BLANK) ? '' : value,
-        ));
-        sendBrowserNotification(domain, 'record_set');
-      };
+        const transactionConfirmed = () => () => {
+          dispatch(receiveSetContent(
+            type, result, (value === CONTENT_BYTES_BLANK) ? '' : value,
+          ));
+          sendBrowserNotification(domain, 'record_set');
+        };
 
-      return dispatch(transactionListener(result, () => transactionConfirmed()));
-    },
-  );
+        return dispatch(transactionListener(result, () => transactionConfirmed()));
+      },
+    );
+  });
 };
 
 /**
@@ -231,8 +255,10 @@ const setContentBytes = (
 export const setContent = (contentType, resolverAddress, domain, value) => (dispatch) => {
   switch (contentType) {
     case CONTENT_BYTES:
-    case CONTENT_HASH:
       dispatch(setContentBytes(resolverAddress, domain, value, contentType));
+      break;
+    case CONTENT_HASH:
+      dispatch(setContenthash(resolverAddress, domain, value, contentType));
       break;
     default:
       break;
