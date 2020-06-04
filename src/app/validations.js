@@ -70,4 +70,4 @@ export const validatePositiveNumber = number => (number >= 0 ? null : 'Invalid n
  * @param {string} bytes to validate
  * @returns {string} null if it's valid and an error message if it is not
  */
-export const validateBytes32 = bytes => (bytes.length === 66 && bytes.slice(0, 2) === '0x' ? null : 'Invalid bytes');
+export const validateBytes32 = bytes => (/^0x[0-9a-f]{64}$/.test(bytes) ? null : 'Invalid bytes');
