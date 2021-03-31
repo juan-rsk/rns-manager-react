@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import propTypes from 'prop-types';
 import { multilanguage } from 'redux-multilanguage';
-
 import { EditContentContainer, ViewContractAbiContainer } from '../containers';
-import { CONTRACT_ABI, CONTENT_HASH } from '../types';
+import { CONTRACT_ABI } from '../types';
+import UserWaitingComponent from '../../../../components/UserWaitingComponent';
 
-const ResolverComponent = ({ strings, start, content }) => {
-  useEffect(() => start(), []);
+const ViewRecordsComponent = ({ strings, content, gettingContent }) => {
+  if (gettingContent) {
+    return <UserWaitingComponent visible />;
+  }
 
   const switchViewType = (item) => {
     if (item[1].isEmpty) {
@@ -17,10 +19,6 @@ const ResolverComponent = ({ strings, start, content }) => {
       case CONTRACT_ABI:
         return <ViewContractAbiContainer value={item[1].value} />;
       default:
-        // eslint-disable-next-line no-case-declarations
-        const placeholder = (item[0] === CONTENT_HASH)
-          ? '/ipfs/, ipfs://..., bzz://..., onion://..., onion3://...' : '';
-
         return (
           <EditContentContainer
             key={item[0]}
@@ -34,7 +32,7 @@ const ResolverComponent = ({ strings, start, content }) => {
               delete: strings.delete,
               delete_confirm_text: strings.delete_content_confirm,
               success_message: strings.content_updated,
-              edit_placeholder: placeholder,
+              edit_placeholder: '',
             }}
           />
         );
@@ -45,12 +43,12 @@ const ResolverComponent = ({ strings, start, content }) => {
     <div className="major-section records">
       <h2>{strings.records}</h2>
       <p>{strings.records_explanation}</p>
-      {Object.entries(content).map(item => switchViewType(item))}
+      {content.map(item => switchViewType(item))}
     </div>
   );
 };
 
-ResolverComponent.propTypes = {
+ViewRecordsComponent.propTypes = {
   strings: propTypes.shape({
     content_bytes: propTypes.string.isRequired,
     records: propTypes.string.isRequired,
@@ -61,8 +59,8 @@ ResolverComponent.propTypes = {
     delete_content_confirm: propTypes.string.isRequired,
     content_updated: propTypes.string.isRequired,
   }).isRequired,
-  start: propTypes.func.isRequired,
+  gettingContent: propTypes.bool.isRequired,
   content: propTypes.shape.isRequired,
 };
 
-export default multilanguage(ResolverComponent);
+export default multilanguage(ViewRecordsComponent);

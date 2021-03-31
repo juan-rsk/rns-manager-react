@@ -6,14 +6,13 @@ import {
 import { Link } from 'react-router-dom';
 import { multilanguage } from 'redux-multilanguage';
 import logo from '../../assets/img/logo.svg';
-import logotest from '../../assets/img/logo-testnet.svg';
-import { LanguageSelectContainer, IndicatorLight } from '../containers';
+import LanguageSelectContainer from '../containers/LanguageSelectContainer';
+import IndicatorLight from '../containers/IndicatorLight';
 import { LoginDropdownContainer } from '../auth/containers';
 
 const HeaderComponent = (props) => {
   const {
     strings,
-    network,
   } = props;
 
   return (
@@ -24,7 +23,7 @@ const HeaderComponent = (props) => {
       <Container>
         <Link to="/" className="navbar-brand">
           <Image
-            src={(network === '31') ? logotest : logo}
+            src={logo}
             className="logo"
             alt="RSK Logo"
           />
@@ -53,7 +52,6 @@ const HeaderComponent = (props) => {
 
 HeaderComponent.propTypes = {
   strings: propTypes.shape().isRequired,
-  network: propTypes.string.isRequired,
 };
 
 export default multilanguage(HeaderComponent);
