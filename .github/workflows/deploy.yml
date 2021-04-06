@@ -9,9 +9,9 @@ on:
 jobs:
   testnet_build_and_deploy:
 
-     if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
 
-     runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
@@ -44,7 +44,7 @@ jobs:
         aws cloudfront create-invalidation --distribution-id ${{ secrets.TESTNET_CLOUDFRONT_DISTRIBUTION }} --paths "/*"
 
   mainnet_build_and_deploy:
-    
+
     if: github.event.pull_request.merged == true 
 
     runs-on: ubuntu-latest
